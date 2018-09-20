@@ -21,6 +21,8 @@ var window, document, ARGS, $, jQuery, moment, kbn;
 var dashboard;
 
 // methods
+
+// Adds a new graph panel with random data
 function addRow(){
   dashboard.rows.push({
     title: 'Chart',
@@ -56,6 +58,8 @@ function addRow(){
   });
 }
 
+// Adds a header with company name
+//company={companyname}
 function dynamicPanel(title){
   dashboard.panels.push({
       title: 'Panel title',
@@ -72,6 +76,9 @@ function dynamicPanel(title){
   });
 }
 
+// adds a graph to the dashboard by taking the data from influx
+// database name and measurement will be parameters
+// company={database}&project={measurement}
 function datasourcePanel(database,measurement) {
   dashboard.rows.push({
     title: 'Chart',
@@ -135,6 +142,7 @@ dashboard = {
   panels: [],
 };
 
+// Default
 var title = 'Scripted dashboard';
 
 if(!_.isUndefined(ARGS.title)){
@@ -153,31 +161,11 @@ dashboard.time = {
   to: "now"
 };
 
-// dashboard.templating = {
-//   list: [
-//     {
-//       name: 'test',
-//       query: 'SELECT * FROM system',
-//       refresh: 1,
-//       type: 'query',
-//       datasource: "Perftool",
-//       hide: 2,
-//     },
-//     {
-//       name: 'test2',
-//       query: '*',
-//       refresh: 1,
-//       type: 'query',
-//       datasource: null,
-//       hide: 2,
-//     }
-//   ]
-// };
-
-
+// Default
 var rows = 1;
 var seriesName = 'argName';
 
+// Is value is given
 if(!_.isUndefined(ARGS.rows)) {
   console.log(ARGS.rows);
   rows = parseInt(ARGS.rows, 10);
@@ -193,16 +181,13 @@ if(!_.isUndefined(ARGS.company)) {
    datasourcePanel(ARGS.company,ARGS.project);
 }
 
+// Understanding the parameters of dashboard
 console.log(dashboard);
 
+// adding rows to the dashboard
 for (var i = 0; i < rows; i++) {
   addRow();
 }
-
-
-
-
-
 
 
 return dashboard;
