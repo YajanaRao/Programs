@@ -1,0 +1,399 @@
+/* global _ */
+
+/*
+ * Complex scripted dashboard
+ * This script generates a dashboard object that Grafana can load. It also takes a number of user
+ * supplied URL parameters (in the ARGS variable)
+ *
+ * Return a dashboard object, or a function
+ *
+ * For async scripts, return a function, this function must take a single callback function as argument,
+ * call this callback function with the dashboard object (look at scripted_async.js for an example)
+ */
+
+
+'use strict';
+
+// accessible variables in this scope
+var window, document, ARGS, $, jQuery, moment, kbn;
+
+// Setup some variables
+var dashboard;
+
+// methods
+function addRow(){
+  dashboard.rows.push({
+    title: 'Chart',
+    height: '300px',
+    panels: [
+      {
+        title: 'Events',
+        type: 'graph',
+        span: 12,
+        fill: 1,
+        linewidth: 2,
+        targets: [
+          {
+            'target': "randomWalk('" + seriesName + "')"
+          },
+          {
+            'target': "randomWalk('random walk2')"
+          }
+        ],
+        seriesOverrides: [
+          {
+            alias: '/random/',
+            yaxis: 2,
+            fill: 0,
+            linewidth: 5
+          }
+        ],
+        tooltip: {
+          shared: true
+        }
+      }
+    ]
+  });
+}
+
+// Adding text panel
+function dynamicPanel(title){
+  dashboard.panels.push({
+      title: 'Panel title',
+      type: 'text',
+      gridPos: {
+        h: 2,
+        w: 24,
+        x: 0,
+        y: 0,
+      },
+      id:4,
+      mode: "markdown",
+      content: "# "+title,
+  });
+}
+
+// panel with multiple queries
+function datasourceMultiPanel(database,measurement) {
+  dashboard.rows.push({
+    title: 'Chart',
+    height: '300px',
+    panels: [
+      {
+        title:  database,
+        type: 'graph',
+        fill: 1,
+        linewidth: 2,
+        span: 12,
+        datasource: database,
+        targets: [
+          {
+            groupBy: [
+              {
+                params:[
+                  '10'
+                ],
+                type: "time"
+              },
+              {
+                params: [
+                  null
+                ],
+                type: "fill"
+              }
+            ],
+            resultFormat: "time_series",
+            tags: [],
+            select:[
+              [
+                {
+                  type: "field",
+                  params: [
+                    "value"
+                  ]
+                },
+                {
+                  type: "mean",
+                  params:[]
+                }
+              ]
+            ],
+            query: "SELECT cpu FROM "+measurement,
+            rawQuery: true
+          },
+          {
+            groupBy: [
+              {
+                params:[
+                  '10'
+                ],
+                type: "time"
+              },
+              {
+                params: [
+                  null
+                ],
+                type: "fill"
+              }
+            ],
+            resultFormat: "time_series",
+            tags: [],
+            select:[
+              [
+                {
+                  type: "field",
+                  params: [
+                    "value"
+                  ]
+                },
+                {
+                  type: "mean",
+                  params:[]
+                }
+              ]
+            ],
+            query: "SELECT disk FROM "+measurement,
+            rawQuery: true
+          },
+          {
+            groupBy: [
+              {
+                params:[
+                  '10'
+                ],
+                type: "time"
+              },
+              {
+                params: [
+                  null
+                ],
+                type: "fill"
+              }
+            ],
+            resultFormat: "time_series",
+            tags: [],
+            select:[
+              [
+                {
+                  type: "field",
+                  params: [
+                    "value"
+                  ]
+                },
+                {
+                  type: "mean",
+                  params:[]
+                }
+              ]
+            ],
+            query: "SELECT memory FROM "+measurement,
+            rawQuery: true
+          }
+        ],
+
+      }
+    ]
+  });
+}
+
+// panel with single query by taking query value as a parameter
+function datasourcePanel(database,measurement,value) {
+  dashboard.rows.push({
+    title: 'Chart',
+    height: '300px',
+    panels: [
+      {
+        title:  value,
+        type: 'graph',
+        fill: 1,
+        linewidth: 2,
+        span: 12,
+        datasource: database,
+        targets: [
+          {
+            groupBy: [
+              {
+                params:[
+                  '10'
+                ],
+                type: "time"
+              },
+              {
+                params: [
+                  null
+                ],
+                type: "fill"
+              }
+            ],
+            resultFormat: "time_series",
+            tags: [],
+            select:[
+              [
+                {
+                  type: "field",
+                  params: [
+                    "value"
+                  ]
+                },
+                {
+                  type: "mean",
+                  params:[]
+                }
+              ]
+            ],
+            query: "SELECT "+value+" FROM "+measurement,
+            rawQuery: true,
+
+          }
+        ],
+
+      }
+    ]
+  });
+}
+
+// creating a datasource panel from template
+function datasourcePanelFromTemplate(database,measurement){
+  dashboard.rows.push({
+    title: 'Chart',
+    height: '300px',
+    panels: [
+      {
+        title:  '[[fields]]',
+        type: 'graph',
+        fill: 1,
+        linewidth: 2,
+        span: 12,
+        datasource: database,
+        targets: [
+          {
+            groupBy: [
+              {
+                params:[
+                  '10'
+                ],
+                type: "time"
+              },
+              {
+                params: [
+                  null
+                ],
+                type: "fill"
+              }
+            ],
+            resultFormat: "time_series",
+            tags: [],
+            select:[
+              [
+                {
+                  type: "field",
+                  params: [
+                    "value"
+                  ]
+                },
+                {
+                  type: "mean",
+                  params:[]
+                }
+              ]
+            ],
+            query: "SELECT [[fields]] FROM "+measurement,
+            rawQuery: true,
+
+          }
+        ],
+
+      }
+    ]
+  });
+}
+
+// All url parameters are available via the ARGS object
+var ARGS;
+
+// Initialize a skeleton with nothing but a rows array and service object
+dashboard = {
+  rows : [],
+  panels: [],
+};
+
+// adding title
+var title = 'Scripted dashboard';
+
+if(!_.isUndefined(ARGS.title)){
+  console.log(ARGS.title);
+  title = ARGS.title;
+}
+
+// Set a title
+dashboard.title = title;
+
+// Set default time
+// time can be overridden in the url using from/to parameters, but this is
+// handled automatically in grafana core during dashboard initialization
+dashboard.time = {
+  from: "now-10m",
+  to: "now"
+};
+
+// adding variable
+function addTemplating(measurement){
+  dashboard.templating = {
+    list: [
+      {
+        name: 'fields',
+        label: 'Single field',
+        query: 'show field keys from '+measurement,
+        refresh: 1,
+        type: 'query',
+        datasource: "Perftool",
+        hide: 0,
+      }
+    ]
+  };
+}
+
+
+
+// setting value
+var rows = 1;
+var seriesName = 'argName';
+
+
+//if(!_.isUndefined(ARGS.rows)) {
+//  console.log(ARGS.rows);
+//  rows = parseInt(ARGS.rows, 10);
+//}
+
+// checking the parameter values
+if(!_.isUndefined(ARGS.name)) {
+  seriesName = ARGS.name;
+}
+var values = ["cpu","disk","memory"]
+if(!_.isUndefined(ARGS.company)) {
+   dynamicPanel(ARGS.company);
+   if(!_.isUndefined(ARGS.project)){
+     datasourceMultiPanel(ARGS.company,ARGS.project);
+     addTemplating(ARGS.project);
+     datasourcePanelFromTemplate(ARGS.company,ARGS.project);
+     for (var i in values) {
+            datasourcePanel(ARGS.company,ARGS.project,values[i]);
+     }
+}
+}else{
+  dynamicPanel("Nothing found")
+}
+
+console.log(dashboard);
+
+// for (var i = 0; i < rows; i++) {
+//   addRow();
+// }
+
+
+
+
+
+
+
+return dashboard;
